@@ -37,8 +37,8 @@ class MainActivity : FlutterActivity() {
         private const val TAG = "MainActivity"
         private const val SOCIAL_LOGIN_CHANNEL = "com.jeeey.shopin/social_login"
         private const val NOTIFICATION_CHANNEL = "com.jeeey.shopin/notifications"
-        // Web client ID from google-services.json (client_type: 3)
-        private const val WEB_CLIENT_ID = "806186232733-mavt0rshih2qgli5qiaj0gkfktj2be18.apps.googleusercontent.com"
+        // Web client ID from google-services.json (client_type: 3) - used for server-side verification
+        private const val WEB_CLIENT_ID = "806186232733-8j3b76t903bce5va9om2tjkk5fqgeg7k.apps.googleusercontent.com"
     }
 
     private var flutterEngine: FlutterEngine? = null
