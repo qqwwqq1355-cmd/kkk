@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Network Security Configuration for Shopin
+     Enforces HTTPS-only connections for security -->
+<network-security-config>
+    <!-- Disallow cleartext (HTTP) traffic for all domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Domain-specific configuration for m.jeeey.com -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">m.jeeey.com</domain>
+        <domain includeSubdomains="true">jeeey.com</domain>
+    </domain-config>
+</network-security-config>

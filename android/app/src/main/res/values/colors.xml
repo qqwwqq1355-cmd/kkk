@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand Colors -->
+    <color name="brand_maroon">#7B1B2B</color>
+    <color name="brand_accent">#FFFFFF</color>
+    
+    <!-- Splash Screen Colors -->
+    <color name="splash_background">#7B1B2B</color>
+    
+    <!-- Default Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>
