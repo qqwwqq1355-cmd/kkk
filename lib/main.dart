@@ -102,14 +102,16 @@ class _WebViewScreenState extends State<WebViewScreen>
   Future<void> _checkConnectivity() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     setState(() {
-      _isOffline = connectivityResult == ConnectivityResult.none;
+      // connectivity_plus 5.x returns List<ConnectivityResult>
+      _isOffline = connectivityResult.isEmpty || 
+                   connectivityResult.contains(ConnectivityResult.none);
     });
 
     // Listen for connectivity changes
     Connectivity().onConnectivityChanged.listen((result) {
       final wasOffline = _isOffline;
       setState(() {
-        _isOffline = result == ConnectivityResult.none;
+        _isOffline = result.isEmpty || result.contains(ConnectivityResult.none);
       });
       if (wasOffline && !_isOffline) {
         // Reconnected - reload
@@ -414,8 +416,16 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _handleBackPress,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+        final shouldPop = await _handleBackPress();
+        if (shouldPop) {
+          // Use SystemNavigator.pop() for proper app exit
+          SystemNavigator.pop();
+        }
+      },
       child: Scaffold(
         body: Stack(
           children: [

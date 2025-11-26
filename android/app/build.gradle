@@ -2,6 +2,16 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'com.google.gms.google-services'
+    id 'dev.flutter.flutter-gradle-plugin' apply false
+}
+
+// Apply Flutter plugin if available
+def flutterPluginAvailable = false
+try {
+    apply plugin: 'dev.flutter.flutter-gradle-plugin'
+    flutterPluginAvailable = true
+} catch (Exception e) {
+    println "Flutter plugin not available - building without Flutter integration"
 }
 
 // Load keystore properties from gradle.properties or environment
@@ -69,14 +79,21 @@ android {
     // Hardware acceleration is enabled by default in Flutter apps
 }
 
-flutter {
-    source '../..'
+// Flutter source configuration (if Flutter plugin is applied)
+if (project.hasProperty('flutter') || plugins.findPlugin('dev.flutter.flutter-gradle-plugin')) {
+    flutter {
+        source '../..'
+    }
 }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    
+    // Lifecycle (for ProcessLifecycleOwner in AppStateHolder)
+    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     
     // Firebase
     implementation platform('com.google.firebase:firebase-bom:32.7.0')

@@ -1,15 +1,20 @@
 rootProject.name = 'shopin'
 
 pluginManagement {
-    def flutterSdkPath = {
+    // Try to load Flutter SDK path from local.properties
+    def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
+    def flutterSdkPath = null
+    
+    if (localPropertiesFile.exists()) {
         def properties = new Properties()
-        file("local.properties").withInputStream { properties.load(it) }
-        def flutterSdkPath = properties.getProperty("flutter.sdk")
-        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-        return flutterSdkPath
-    }()
-
-    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+        localPropertiesFile.withInputStream { properties.load(it) }
+        flutterSdkPath = properties.getProperty("flutter.sdk")
+    }
+    
+    // If Flutter SDK is available, include Flutter gradle plugin
+    if (flutterSdkPath != null) {
+        includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+    }
 
     repositories {
         google()
@@ -19,7 +24,7 @@ pluginManagement {
 }
 
 plugins {
-    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0" apply false
     id "com.android.application" version "8.2.0" apply false
     id "org.jetbrains.kotlin.android" version "1.9.10" apply false
 }
