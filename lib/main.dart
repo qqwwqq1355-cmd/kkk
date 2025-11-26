@@ -39,7 +39,7 @@ class ShopinApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Shopin',
+      title: 'جي jeeey',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: kBrandMaroon,
@@ -219,7 +219,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         });
         
         // MutationObserver for theme-color meta changes
-        var observer = new MutationObserver(function(mutations) {
+        var themeObserver = new MutationObserver(function(mutations) {
           mutations.forEach(function(mutation) {
             if (mutation.target.name === 'theme-color') {
               ThemeBridge.postMessage(JSON.stringify({type: 'theme', color: mutation.target.content}));
@@ -229,8 +229,79 @@ class _WebViewScreenState extends State<WebViewScreen>
         
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) {
-          observer.observe(meta, {attributes: true, attributeFilter: ['content']});
+          themeObserver.observe(meta, {attributes: true, attributeFilter: ['content']});
         }
+        
+        // Social login button detection patterns
+        var googlePatterns = ['Google', 'تسجيل عبر جوجل', 'google', 'جوجل', 'Sign in with Google', 'Continue with Google'];
+        var facebookPatterns = ['Facebook', 'تسجيل عبر فيسبوك', 'facebook', 'فيسبوك', 'Sign in with Facebook', 'Continue with Facebook'];
+        var googleClasses = ['google-login', 'google-btn', 'google-sign-in', 'btn-google', 'social-google'];
+        var facebookClasses = ['facebook-login', 'facebook-btn', 'fb-login', 'btn-facebook', 'social-facebook'];
+        
+        // Function to check if element matches social login button
+        function detectProvider(element) {
+          var text = element.textContent || element.innerText || '';
+          var className = element.className || '';
+          var id = element.id || '';
+          
+          // Check Google patterns
+          if (googlePatterns.some(function(p) { return text.indexOf(p) !== -1; })) return 'google';
+          if (googleClasses.some(function(c) { return className.indexOf(c) !== -1 || id.indexOf(c) !== -1; })) return 'google';
+          if (id.indexOf('google') !== -1 || className.indexOf('google') !== -1) return 'google';
+          
+          // Check Facebook patterns
+          if (facebookPatterns.some(function(p) { return text.indexOf(p) !== -1; })) return 'facebook';
+          if (facebookClasses.some(function(c) { return className.indexOf(c) !== -1 || id.indexOf(c) !== -1; })) return 'facebook';
+          if (id.indexOf('facebook') !== -1 || id.indexOf('fb-') !== -1 || className.indexOf('facebook') !== -1 || className.indexOf('fb-') !== -1) return 'facebook';
+          
+          return null;
+        }
+        
+        // Function to intercept social login buttons
+        function interceptSocialButtons(root) {
+          var buttons = root.querySelectorAll('button, a, div[role="button"], span[role="button"], input[type="button"], input[type="submit"]');
+          buttons.forEach(function(btn) {
+            if (btn.dataset.socialIntercepted) return;
+            
+            var provider = detectProvider(btn);
+            if (provider) {
+              btn.dataset.socialIntercepted = 'true';
+              btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                SocialLoginBridge.postMessage(JSON.stringify({type: 'social-login', provider: provider}));
+                return false;
+              }, true);
+            }
+          });
+        }
+        
+        // Initial scan
+        interceptSocialButtons(document);
+        
+        // MutationObserver to detect dynamically added buttons
+        var socialObserver = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+              if (node.nodeType === 1) {
+                interceptSocialButtons(node);
+                // Also check the node itself
+                var provider = detectProvider(node);
+                if (provider && !node.dataset.socialIntercepted) {
+                  node.dataset.socialIntercepted = 'true';
+                  node.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    SocialLoginBridge.postMessage(JSON.stringify({type: 'social-login', provider: provider}));
+                    return false;
+                  }, true);
+                }
+              }
+            });
+          });
+        });
+        
+        socialObserver.observe(document.body, {childList: true, subtree: true});
       })();
     ''';
     await _controller.runJavaScript(js);
@@ -263,47 +334,86 @@ class _WebViewScreenState extends State<WebViewScreen>
   }
 
   /// Trigger native social login via platform channel
-  /// TODO: Implement actual Google/Facebook sign-in flows with real credentials
+  /// Implements Google/Facebook sign-in with server binding to backend
   Future<void> _triggerNativeSocialLogin(String provider) async {
     try {
       // This calls native Kotlin code to handle sign-in
-      // The native side should implement GoogleSignIn/FacebookLogin and return token
+      // The native side implements GoogleSignIn/FacebookLogin and returns token
       final result = await _socialLoginChannel.invokeMethod('signIn', {
         'provider': provider,
       });
 
-      if (result != null) {
-        // On success, inject the token back to web page
-        final token = result['token'] ?? '';
-        final script = '''
-          window.postMessage({
-            type: 'social-login-result',
-            provider: '$provider',
-            token: '$token',
-            success: true
-          }, '*');
-        ''';
-        await _controller.runJavaScript(script);
+      if (result != null && result['token'] != null) {
+        final token = result['token'] as String;
+        
+        // Get current URL for return parameter
+        final currentUrl = await _controller.currentUrl() ?? kHomeUrl;
+        
+        // POST token to backend to link session
+        try {
+          final response = await http.post(
+            Uri.parse('https://m.jeeey.com/api/auth/social'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'provider': provider,
+              'token': token,
+              'return': currentUrl,
+            }),
+          ).timeout(const Duration(seconds: 10));
+
+          if (response.statusCode == 200) {
+            final responseData = jsonDecode(response.body);
+            if (responseData['ok'] == true) {
+              // Success - reload page to apply session
+              await _controller.reload();
+              
+              // Also notify web page of success
+              final script = '''
+                window.postMessage({
+                  type: 'social-login-result',
+                  provider: '$provider',
+                  success: true
+                }, '*');
+              ''';
+              await _controller.runJavaScript(script);
+            } else {
+              throw Exception(responseData['error'] ?? 'Server returned error');
+            }
+          } else {
+            throw Exception('Server error: ${response.statusCode}');
+          }
+        } catch (e) {
+          debugPrint('Backend auth error: $e');
+          _showLoginError('حدث خطأ في الاتصال بالخادم');
+        }
       }
     } on PlatformException catch (e) {
       debugPrint('Social login error: ${e.message}');
-      // Notify web page of failure
-      final script = '''
-        window.postMessage({
-          type: 'social-login-result',
-          provider: '$provider',
-          success: false,
-          error: '${e.message}'
-        }, '*');
-      ''';
-      await _controller.runJavaScript(script);
+      // Show error to user
+      if (e.code == 'CANCELLED') {
+        // User cancelled - no need to show error
+        return;
+      }
+      _showLoginError(e.message ?? 'حدث خطأ في تسجيل الدخول');
+    }
+  }
+  
+  /// Show login error snackbar
+  void _showLoginError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
   /// Fetch theme from REST endpoint
   Future<void> _fetchThemeFromEndpoint() async {
     try {
-      // TODO: Replace with actual endpoint when available
       final response = await http.get(Uri.parse(kThemeEndpoint)).timeout(
         const Duration(seconds: 5),
         onTimeout: () => http.Response('', 408),

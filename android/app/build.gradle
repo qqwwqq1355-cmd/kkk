@@ -103,11 +103,11 @@ dependencies {
     // Local Broadcast (for FCM foreground handling)
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
     
-    // TODO: Add Google Sign-In SDK when implementing native sign-in
-    // implementation 'com.google.android.gms:play-services-auth:20.7.0'
+    // Google Sign-In SDK
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
     
-    // TODO: Add Facebook Login SDK when implementing native sign-in
-    // implementation 'com.facebook.android:facebook-login:16.3.0'
+    // Facebook Login SDK
+    implementation 'com.facebook.android:facebook-login:16.3.0'
     
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

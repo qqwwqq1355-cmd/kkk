@@ -9,14 +9,25 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
 
 /**
  * Main Activity for the Shopin Flutter WebView app.
  * 
  * Handles:
  * - Flutter engine configuration
- * - Platform channels for native social login
+ * - Platform channels for native social login (Google & Facebook)
  * - FCM broadcast receiver for foreground notifications
  * - Deep link handling from notifications
  */
@@ -26,9 +37,15 @@ class MainActivity : FlutterActivity() {
         private const val TAG = "MainActivity"
         private const val SOCIAL_LOGIN_CHANNEL = "com.jeeey.shopin/social_login"
         private const val NOTIFICATION_CHANNEL = "com.jeeey.shopin/notifications"
+        // Web client ID from google-services.json (client_type: 3)
+        private const val WEB_CLIENT_ID = "806186232733-mavt0rshih2qgli5qiaj0gkfktj2be18.apps.googleusercontent.com"
     }
 
     private var flutterEngine: FlutterEngine? = null
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
+    private lateinit var callbackManager: CallbackManager
+    private var pendingResult: MethodChannel.Result? = null
 
     /**
      * Broadcast receiver for FCM messages when app is in foreground.
@@ -62,6 +79,45 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize Google Sign-In
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(WEB_CLIENT_ID)
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        // Initialize Google Sign-In launcher
+        googleSignInLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            handleGoogleSignInResult(result.resultCode, result.data)
+        }
+
+        // Initialize Facebook
+        callbackManager = CallbackManager.Factory.create()
+        LoginManager.getInstance().registerCallback(callbackManager,
+            object : FacebookCallback<LoginResult> {
+                override fun onSuccess(result: LoginResult) {
+                    val token = result.accessToken.token
+                    Log.d(TAG, "Facebook login success")
+                    pendingResult?.success(mapOf("token" to token))
+                    pendingResult = null
+                }
+
+                override fun onCancel() {
+                    Log.d(TAG, "Facebook login cancelled")
+                    pendingResult?.error("CANCELLED", "User cancelled login", null)
+                    pendingResult = null
+                }
+
+                override fun onError(error: FacebookException) {
+                    Log.e(TAG, "Facebook login error", error)
+                    pendingResult?.error("ERROR", error.message, null)
+                    pendingResult = null
+                }
+            }
+        )
+
         // Register FCM broadcast receiver
         LocalBroadcastManager.getInstance(this).registerReceiver(
             fcmReceiver,
@@ -70,6 +126,34 @@ class MainActivity : FlutterActivity() {
 
         // Handle deep link from notification if present
         handleDeepLinkIntent(intent)
+    }
+
+    private fun handleGoogleSignInResult(resultCode: Int, data: Intent?) {
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            
+            if (idToken != null) {
+                Log.d(TAG, "Google Sign-In success")
+                pendingResult?.success(mapOf("token" to idToken))
+            } else {
+                pendingResult?.error("NO_TOKEN", "No ID token received", null)
+            }
+        } catch (e: ApiException) {
+            Log.e(TAG, "Google Sign-In failed: ${e.statusCode}", e)
+            when (e.statusCode) {
+                12501 -> pendingResult?.error("CANCELLED", "User cancelled login", null)
+                else -> pendingResult?.error("ERROR", "Sign-in failed: ${e.message}", null)
+            }
+        }
+        pendingResult = null
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // Facebook callback
+        callbackManager.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -91,9 +175,6 @@ class MainActivity : FlutterActivity() {
 
     /**
      * Setup platform channel for native social login.
-     * 
-     * TODO: Implement actual Google/Facebook sign-in when credentials are available.
-     * The current implementation returns stub responses for development.
      */
     private fun setupSocialLoginChannel(flutterEngine: FlutterEngine) {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SOCIAL_LOGIN_CHANNEL)
@@ -102,32 +183,24 @@ class MainActivity : FlutterActivity() {
                     "signIn" -> {
                         val provider = call.argument<String>("provider")
                         Log.d(TAG, "Social login requested for provider: $provider")
+                        pendingResult = result
 
                         when (provider) {
                             "google" -> {
-                                // TODO: Implement Google Sign-In
-                                // 1. Launch GoogleSignInClient with correct client ID
-                                // 2. Handle activity result
-                                // 3. Get idToken and return it
-                                // For now, return error indicating not implemented
-                                result.error(
-                                    "NOT_IMPLEMENTED",
-                                    "Google Sign-In not yet implemented. Add Google Sign-In SDK and configure OAuth client ID.",
-                                    null
-                                )
+                                // Sign out first to allow account selection
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    val signInIntent = googleSignInClient.signInIntent
+                                    googleSignInLauncher.launch(signInIntent)
+                                }
                             }
                             "facebook" -> {
-                                // TODO: Implement Facebook Login
-                                // 1. Initialize FacebookSdk
-                                // 2. Use LoginManager to request permissions
-                                // 3. Get access token and return it
-                                result.error(
-                                    "NOT_IMPLEMENTED",
-                                    "Facebook Login not yet implemented. Add Facebook SDK and configure App ID.",
-                                    null
+                                LoginManager.getInstance().logInWithReadPermissions(
+                                    this,
+                                    listOf("email", "public_profile")
                                 )
                             }
                             else -> {
+                                pendingResult = null
                                 result.error(
                                     "INVALID_PROVIDER",
                                     "Unknown sign-in provider: $provider",
@@ -139,7 +212,10 @@ class MainActivity : FlutterActivity() {
                     "signOut" -> {
                         val provider = call.argument<String>("provider")
                         Log.d(TAG, "Sign out requested for provider: $provider")
-                        // TODO: Implement sign out for respective providers
+                        when (provider) {
+                            "google" -> googleSignInClient.signOut()
+                            "facebook" -> LoginManager.getInstance().logOut()
+                        }
                         result.success(true)
                     }
                     else -> {
