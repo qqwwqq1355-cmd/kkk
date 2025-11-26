@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">جي jeeey</string>
+    
+    <!-- Facebook SDK Configuration -->
+    <string name="facebook_app_id">3535464186742495</string>
+    <!-- NOTE: Add your Facebook Client Token from developers.facebook.com > Settings > Advanced -->
+    <string name="facebook_client_token">YOUR_FACEBOOK_CLIENT_TOKEN</string>
+    <string name="fb_login_protocol_scheme">fb3535464186742495</string>
+</resources>

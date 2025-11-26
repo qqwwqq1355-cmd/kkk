@@ -1,0 +1,158 @@
+# Shopin WebView App - Git Ignore Configuration
+
+# =============================================================================
+# SECURITY: Sensitive Files - NEVER COMMIT
+# =============================================================================
+
+# Signing keystores
+*.jks
+*.keystore
+android/app/key.jks
+key.properties
+
+# Local credentials
+local.properties
+*.env
+.env.*
+
+# =============================================================================
+# Flutter/Dart
+# =============================================================================
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# =============================================================================
+# Android
+# =============================================================================
+
+# Gradle
+.gradle/
+/android/.gradle/
+/android/local.properties
+/android/**/build/
+/android/captures/
+
+# Android Studio
+/android/.idea/
+/android/*.iml
+
+# Native builds
+*.so
+
+# =============================================================================
+# iOS (if Flutter iOS added later)
+# =============================================================================
+
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/**/.symlinks/
+**/ios/profile
+**/ios/DerivedData/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# =============================================================================
+# Build Outputs
+# =============================================================================
+
+# Release builds
+*.aab
+*.apk
+build/
+dist/
+
+# =============================================================================
+# Testing
+# =============================================================================
+
+# Coverage
+coverage/
+.coverage
+*.lcov
+
+# Test outputs
+test-results/
+*.test.js
+
+# =============================================================================
+# OS Generated
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# =============================================================================
+# Keep these placeholder files
+# =============================================================================
+
+# Keep the placeholder text file for documentation
+!android/app/key.jks.placeholder.txt
+
+# Note: google-services.json is intentionally NOT ignored
+# A placeholder is committed; replace with real file before building

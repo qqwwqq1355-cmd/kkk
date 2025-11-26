@@ -1,0 +1,115 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'com.google.gms.google-services'
+    id 'dev.flutter.flutter-gradle-plugin' apply false
+}
+
+// Apply Flutter plugin if available
+def flutterPluginAvailable = false
+try {
+    apply plugin: 'dev.flutter.flutter-gradle-plugin'
+    flutterPluginAvailable = true
+} catch (Exception e) {
+    println "Flutter plugin not available - building without Flutter integration"
+}
+
+// Load keystore properties from gradle.properties or environment
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace 'com.jeeey.shopin'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.jeeey.shopin"
+        minSdk 21
+        targetSdk 35
+        versionCode 3046
+        versionName "1.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            // WARNING: Do not commit real passwords! Use gradle.properties or CI secrets.
+            // To configure: create key.properties file in project root with:
+            //   storeFile=key.jks
+            //   storePassword=YOUR_STORE_PASSWORD
+            //   keyAlias=YOUR_KEY_ALIAS
+            //   keyPassword=YOUR_KEY_PASSWORD
+            
+            storeFile file("key.jks")
+            storePassword keystoreProperties['storePassword'] ?: System.getenv("KEYSTORE_PASSWORD") ?: "STORE_PASSWORD_PLACEHOLDER"
+            keyAlias keystoreProperties['keyAlias'] ?: System.getenv("KEY_ALIAS") ?: "KEY_ALIAS_PLACEHOLDER"
+            keyPassword keystoreProperties['keyPassword'] ?: System.getenv("KEY_PASSWORD") ?: "KEY_PASSWORD_PLACEHOLDER"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    // Hardware acceleration is enabled by default in Flutter apps
+}
+
+// Flutter source configuration (if Flutter plugin is applied)
+if (project.hasProperty('flutter') || plugins.findPlugin('dev.flutter.flutter-gradle-plugin')) {
+    flutter {
+        source '../..'
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    
+    // Lifecycle (for ProcessLifecycleOwner in AppStateHolder)
+    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    
+    // Firebase
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-messaging-ktx'
+    implementation 'com.google.firebase:firebase-analytics-ktx'
+    
+    // Local Broadcast (for FCM foreground handling)
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+    
+    // Google Sign-In SDK
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
+    
+    // Facebook Login SDK
+    implementation 'com.facebook.android:facebook-login:16.3.0'
+    
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
